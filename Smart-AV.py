@@ -1,7 +1,9 @@
 #!/usr/bin/python
 
+from binary_studio import *
 from sklearn.feature_extraction import FeatureHasher
 import argparse
+import os
 
 
 def train_detector(benign_path, malicious_path, hasher):
@@ -14,7 +16,7 @@ def train_detector(benign_path, malicious_path, hasher):
     malicious_paths = get_training_paths(malicious_path)
     benign_paths = get_training_paths(benign_path)
     # X features
-    X = [get_number_of_call(path, hasher)
+    X = [get_number_of_imports(path)
          for path in malicious_paths + benign_paths]
     # y Data ref
     y = [1 for i in range(len(malicious_paths))] + \
@@ -22,18 +24,6 @@ def train_detector(benign_path, malicious_path, hasher):
     classifier = tree.RandomForestClassifier(64)
     classifier.fit(X, y)
     pickle.dump((classifier, hasher), open("saved_detector.pkl", "w+"))
-
-
-def get_number_of_call(path, hasher):
-    """Return the number of call of a given binary."""
-    import pefile
-    pe = pefile.PE(path)
-    nb_of_call = 0
-    for entry in pe.DIRECTORY_ENTRY_IMPORT:
-        for function in entry.imports:
-            if function.name:
-                nb_of_call += 1
-    return nb_of_call
 
 
 parser = argparse.ArgumentParser()
