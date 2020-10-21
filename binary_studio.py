@@ -1,11 +1,25 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import pefile
-
+from sklearn.feature_extraction import FeatureHasher
+import re
+import numpy
 
 def get_number_of_imports(path):
     """For a given binary this fonction return the number of import."""
-    pe = pefile.PE(path)
+    try:
+        pe = pefile.PE(path)
+        dei = pe.DIRECTORY_ENTRY_IMPORT
+    except AttributeError as AttriError:
+        # print("%s : %s" % (path, AttriError))
+        pass
+    except PEFormatError as formatError:
+        # print("%s : %s" % (path, formatError))    
+        pass
+
+    finally:
+        return 0
+
     nb_of_import = 0
     for entry in pe.DIRECTORY_ENTRY_IMPORT:
         for function in entry.imports:
@@ -13,6 +27,32 @@ def get_number_of_imports(path):
                 nb_of_import += 1
     return nb_of_import
 
+def get_string_features(path,hasher):
+    # extract strings from binary file using regular expressions
+    chars = r" -~"
+    min_length = 5
+    string_regexp = '[%s]{%d,}' % (chars, min_length)
+    file_object = open(path)
+    data = file_object.read()
+    pattern = re.compile(string_regexp)
+    strings = pattern.findall(data)
+
+    # store string features in dictionary form
+    string_features = {}
+    for string in strings:
+        string_features[string] = 1
+
+    # hash the features using the hashing trick
+    hashed_features = hasher.transform([string_features])
+
+    # do some data munging to get the feature array
+    hashed_features = hashed_features.todense()
+    hashed_features = numpy.asarray(hashed_features)
+    hashed_features = hashed_features[0]
+
+    # return hashed string features
+    # print("Extracted {0} strings from {1}").format(len(string_features), path)
+    return hashed_features
 
 def is_binary_is_packed(path):
     """For a given binary this fonction detrmine if it's packed or not.
